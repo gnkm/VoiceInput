@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:system_tray/system_tray.dart';
 
 abstract class SystemTrayService {
@@ -8,11 +7,9 @@ abstract class SystemTrayService {
 
 class DefaultSystemTrayService implements SystemTrayService {
   final SystemTray _systemTray;
-  final AppWindow? _appWindow;
 
-  DefaultSystemTrayService({SystemTray? systemTray, AppWindow? appWindow})
-      : _systemTray = systemTray ?? SystemTray(),
-        _appWindow = appWindow ?? AppWindow();
+  DefaultSystemTrayService({SystemTray? systemTray})
+      : _systemTray = systemTray ?? SystemTray();
 
   @override
   Future<void> init() async {

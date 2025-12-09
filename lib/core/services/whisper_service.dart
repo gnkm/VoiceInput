@@ -30,6 +30,6 @@ class DefaultWhisperService implements WhisperService {
     final response = await _whisper!.transcribe(
       transcribeRequest: TranscribeRequest(audio: audioPath),
     );
-    return response?.text ?? '';
+    return response.text;
   }
 }

@@ -1,9 +1,9 @@
-import 'package:hotkey_manager/hotkey_manager.dart';
 import 'package:flutter/foundation.dart';
+import 'package:hotkey_manager/hotkey_manager.dart';
 
 abstract class HotkeyService {
   Future<void> init();
-  Future<void> register(HotKey hotKey, {VoidCallback? onKeyDown});
+  Future<void> register(HotKey hotKey, {VoidCallback? onKeyDown, VoidCallback? onKeyUp});
 }
 
 class SystemHotkeyService implements HotkeyService {
@@ -17,10 +17,11 @@ class SystemHotkeyService implements HotkeyService {
   }
 
   @override
-  Future<void> register(HotKey hotKey, {VoidCallback? onKeyDown}) async {
+  Future<void> register(HotKey hotKey, {VoidCallback? onKeyDown, VoidCallback? onKeyUp}) async {
     await _manager.register(
       hotKey,
       keyDownHandler: onKeyDown != null ? (_) => onKeyDown() : null,
+      keyUpHandler: onKeyUp != null ? (_) => onKeyUp() : null,
     );
   }
 }

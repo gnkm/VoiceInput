@@ -40,6 +40,7 @@ void main() {
       () => mockHotKeyManager.register(
         hotKey,
         keyDownHandler: any(named: 'keyDownHandler'),
+        keyUpHandler: any(named: 'keyUpHandler'),
       ),
     ).called(1);
   });

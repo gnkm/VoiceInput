@@ -8,7 +8,6 @@ class MockAppWindow extends Mock implements AppWindow {}
 
 void main() {
   late MockSystemTray mockSystemTray;
-  late MockAppWindow mockAppWindow;
   late DefaultSystemTrayService trayService;
 
   setUpAll(() {
@@ -18,8 +17,7 @@ void main() {
 
   setUp(() {
     mockSystemTray = MockSystemTray();
-    mockAppWindow = MockAppWindow();
-    trayService = DefaultSystemTrayService(systemTray: mockSystemTray, appWindow: mockAppWindow);
+    trayService = DefaultSystemTrayService(systemTray: mockSystemTray);
 
     when(() => mockSystemTray.initSystemTray(title: any(named: 'title'), iconPath: any(named: 'iconPath')))
         .thenAnswer((_) async => true);

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:whisper_flutter_new/whisper_flutter_new.dart';
 import 'package:voice_input/core/services/whisper_service.dart';
+import 'package:whisper_flutter_new/whisper_flutter_new.dart';
 
 class MockWhisper extends Mock implements Whisper {}
 
