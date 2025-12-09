@@ -23,6 +23,23 @@ VoiceInput プロジェクトへの貢献に興味を持っていただきあり
 
 コミットメッセージは明確かつ簡潔に記述してください。可能であれば [Conventional Commits](https://www.conventionalcommits.org/ja/v1.0.0/) に従うことを推奨します。
 
+## 環境構築 (Setup)
+
+### Lefthook (Git Hooks) の設定
+
+本プロジェクトでは、コミット前にコードの品質確認を自動化するために [Lefthook](https://github.com/evilmartians/lefthook) を使用しています。
+初回セットアップ時に以下のコマンドを実行して、Git Hooks を有効化してください。
+
+```bash
+# Lefthook がインストールされていない場合はインストール (Homebrew の場合)
+brew install lefthook
+
+# Git Hooks のインストール
+lefthook install
+```
+
+これにより、`git commit` 実行時に自動的に `dart format`, `flutter analyze`, `flutter test` が実行されるようになります。
+
 ## コード品質とテスト
 
 プルリクエストを作成する前に、以下のコマンドを実行してコードの品質を確認してください。
