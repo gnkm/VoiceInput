@@ -49,6 +49,33 @@ dart format .
 flutter test
 ```
 
+## デバッグと実行 (Debugging and Running)
+
+開発中のアプリケーションを実行するには、以下のコマンドを使用します。
+
+### macOS での実行
+
+```bash
+flutter run -d macos
+```
+
+- **ホットリロード (Hot Reload):** ターミナルで `r` を押すか、VS Code などの IDE の機能を使用します。
+- **ホットリスタート (Hot Restart):** ターミナルで `R` (Shift+r) を押します。
+
+アプリケーションはシステムトレイアプリケーションとして起動するため、実行してもウィンドウが表示されない場合があります。システムトレイ（メニューバー）のアイコンを確認してください。
+
+## ビルド (Build)
+
+リリース用のアプリケーションをビルドするには、以下のコマンドを使用します。
+
+### macOS アプリケーションのビルド
+
+```bash
+flutter build macos --release
+```
+
+ビルド成果物は `build/macos/Build/Products/Release/voice_input.app` に生成されます。
+
 ## リリースプロセス
 
 本プロジェクトでは GitHub Actions を使用してリリースプロセスを自動化しています（予定）。
