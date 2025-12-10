@@ -11,7 +11,9 @@ void main() {
   late SystemHotkeyService hotkeyService;
 
   setUpAll(() {
-    registerFallbackValue(HotKey(key: LogicalKeyboardKey.keyA, modifiers: [HotKeyModifier.meta]));
+    registerFallbackValue(
+      HotKey(key: LogicalKeyboardKey.keyA, modifiers: [HotKeyModifier.meta]),
+    );
   });
 
   setUp(() {
@@ -34,7 +36,10 @@ void main() {
   });
 
   test('register should register hotkey with manager', () async {
-    final hotKey = HotKey(key: LogicalKeyboardKey.keyA, modifiers: [HotKeyModifier.meta]);
+    final hotKey = HotKey(
+      key: LogicalKeyboardKey.keyA,
+      modifiers: [HotKeyModifier.meta],
+    );
     await hotkeyService.register(hotKey);
     verify(
       () => mockHotKeyManager.register(

@@ -18,7 +18,9 @@ void main() {
     captureService = DefaultAudioCaptureService(recorder: mockRecorder);
 
     when(() => mockRecorder.hasPermission()).thenAnswer((_) async => true);
-    when(() => mockRecorder.start(any(), path: any(named: 'path'))).thenAnswer((_) async {});
+    when(
+      () => mockRecorder.start(any(), path: any(named: 'path')),
+    ).thenAnswer((_) async {});
     when(() => mockRecorder.stop()).thenAnswer((_) async => 'path/to/file');
   });
 

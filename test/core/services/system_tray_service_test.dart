@@ -4,6 +4,7 @@ import 'package:system_tray/system_tray.dart';
 import 'package:voice_input/core/services/system_tray_service.dart';
 
 class MockSystemTray extends Mock implements SystemTray {}
+
 class MockAppWindow extends Mock implements AppWindow {}
 
 void main() {
@@ -19,14 +20,23 @@ void main() {
     mockSystemTray = MockSystemTray();
     trayService = DefaultSystemTrayService(systemTray: mockSystemTray);
 
-    when(() => mockSystemTray.initSystemTray(title: any(named: 'title'), iconPath: any(named: 'iconPath')))
-        .thenAnswer((_) async => true);
+    when(
+      () => mockSystemTray.initSystemTray(
+        title: any(named: 'title'),
+        iconPath: any(named: 'iconPath'),
+      ),
+    ).thenAnswer((_) async => true);
     when(() => mockSystemTray.setContextMenu(any())).thenAnswer((_) async {});
   });
 
   test('init should initialize system tray', () async {
     await trayService.init();
-    verify(() => mockSystemTray.initSystemTray(title: any(named: 'title'), iconPath: any(named: 'iconPath'))).called(1);
+    verify(
+      () => mockSystemTray.initSystemTray(
+        title: any(named: 'title'),
+        iconPath: any(named: 'iconPath'),
+      ),
+    ).called(1);
   });
 
   test('setContextMenu should set menu', () async {

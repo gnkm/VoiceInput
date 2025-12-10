@@ -15,12 +15,23 @@ void main() {
 
   setUp(() {
     mockWhisper = MockWhisper();
-    when(() => mockWhisper.transcribe(transcribeRequest: any(named: 'transcribeRequest')))
-        .thenAnswer((_) async => WhisperTranscribeResponse(type: 'success', text: 'Transcribed Text', segments: []));
+    when(
+      () => mockWhisper.transcribe(
+        transcribeRequest: any(named: 'transcribeRequest'),
+      ),
+    ).thenAnswer(
+      (_) async => WhisperTranscribeResponse(
+        type: 'success',
+        text: 'Transcribed Text',
+        segments: [],
+      ),
+    );
 
-    whisperService = DefaultWhisperService(factory: ({required WhisperModel model}) {
-      return mockWhisper;
-    });
+    whisperService = DefaultWhisperService(
+      factory: ({required WhisperModel model}) {
+        return mockWhisper;
+      },
+    );
   });
 
   test('transcribe should throw if not initialized', () async {
@@ -32,8 +43,10 @@ void main() {
     await whisperService.init(modelPath: 'base');
     final result = await whisperService.transcribe('audio.wav');
     expect(result, 'Transcribed Text');
-    verify(() => mockWhisper.transcribe(
-          transcribeRequest: any(named: 'transcribeRequest'),
-        )).called(1);
+    verify(
+      () => mockWhisper.transcribe(
+        transcribeRequest: any(named: 'transcribeRequest'),
+      ),
+    ).called(1);
   });
 }
