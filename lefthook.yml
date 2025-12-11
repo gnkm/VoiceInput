@@ -13,3 +13,6 @@ pre-commit:
     security:
       glob: "pubspec.yaml"
       run: osv-scanner --lockfile pubspec.lock
+    secrets:
+      glob: "*"
+      run: gitleaks protect --staged --redact --verbose
