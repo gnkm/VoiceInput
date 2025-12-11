@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:file/file.dart';
+import 'package:file/memory.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hotkey_manager/hotkey_manager.dart';
@@ -27,6 +29,7 @@ void main() {
   late MockSystemTrayService mockSystemTrayService;
   late MockWindowService mockWindowService;
   late VoiceInputController controller;
+  late FileSystem fs;
 
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +44,7 @@ void main() {
     mockHotkeyService = MockHotkeyService();
     mockSystemTrayService = MockSystemTrayService();
     mockWindowService = MockWindowService();
+    fs = MemoryFileSystem();
 
     controller = VoiceInputController(
       audioCaptureService: mockAudioCaptureService,
@@ -48,15 +52,13 @@ void main() {
       hotkeyService: mockHotkeyService,
       systemTrayService: mockSystemTrayService,
       windowService: mockWindowService,
+      fileSystem: fs,
     );
 
     when(() => mockHotkeyService.init()).thenAnswer((_) async {});
     when(
-      () => mockHotkeyService.register(
-        any(),
-        onKeyDown: any(named: 'onKeyDown'),
-        onKeyUp: any(named: 'onKeyUp'),
-      ),
+      () =>
+          mockHotkeyService.register(any(), onKeyDown: any(named: 'onKeyDown')),
     ).thenAnswer((_) async {});
 
     // Mock Stream
@@ -83,25 +85,19 @@ void main() {
     await controller.init();
     verify(() => mockHotkeyService.init()).called(1);
     verify(
-      () => mockHotkeyService.register(
-        any(),
-        onKeyDown: any(named: 'onKeyDown'),
-        onKeyUp: any(named: 'onKeyUp'),
-      ),
+      () =>
+          mockHotkeyService.register(any(), onKeyDown: any(named: 'onKeyDown')),
     ).called(1);
   });
 
   test('startRecording should call audio capture start', () async {
-    // Trick to get the path_provider to work in tests if needed,
-    // or we can mock dependencies that use path_provider.
-    // However, VoiceInputController calls getTemporaryDirectory().
-    // We need to mock the channel for path_provider.
-
+    // Trick to get the path_provider to work in tests
     const channel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          return '.';
+          return '/tmp';
         });
+    fs.directory('/tmp').createSync(recursive: true);
 
     await controller.startRecording();
     verify(() => mockAudioCaptureService.startStream()).called(1);
@@ -116,8 +112,9 @@ void main() {
     const channel = MethodChannel('plugins.flutter.io/path_provider');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          return '.';
+          return '/tmp';
         });
+    fs.directory('/tmp').createSync(recursive: true);
 
     await controller.startRecording();
     await controller.stopRecordingAndTranscribe();

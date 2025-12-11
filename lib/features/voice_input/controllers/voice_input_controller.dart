@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'dart:io';
+
+import 'package:file/file.dart';
+import 'package:file/local.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -20,15 +22,18 @@ class VoiceInputController {
   final HotkeyService _hotkeyService;
   final SystemTrayService _systemTrayService;
   final WindowService _windowService;
+  final FileSystem _fs;
 
   // State
   bool _isRecording = false;
+  bool _isProcessing = false;
   final List<int> _audioBuffer = [];
   Timer? _transcriptionTimer;
   StreamSubscription? _isRecordingStreamSubscription;
   String _currentTranscription = '';
 
-  // Streams
+  // ... (streams are unchanged) ...
+
   final _textController = StreamController<String>.broadcast();
   Stream<String> get textStream => _textController.stream;
 
@@ -41,21 +46,22 @@ class VoiceInputController {
     required HotkeyService hotkeyService,
     required SystemTrayService systemTrayService,
     required WindowService windowService,
+    FileSystem? fileSystem,
   }) : _audioCaptureService = audioCaptureService,
        _whisperService = whisperService,
        _hotkeyService = hotkeyService,
        _systemTrayService = systemTrayService,
-       _windowService = windowService;
+       _windowService = windowService,
+       _fs = fileSystem ?? const LocalFileSystem();
 
   Future<void> init() async {
     await _hotkeyService.init();
 
     // Register the hotkey: Cmd+Option+Space (MacOS)
-    // You might want to make this configurable later.
     final hotKey = HotKey(
       key: LogicalKeyboardKey.space,
       modifiers: [HotKeyModifier.meta, HotKeyModifier.alt],
-      scope: HotKeyScope.system, // Make it available system-wide
+      scope: HotKeyScope.system,
     );
 
     await _hotkeyService.register(
@@ -67,21 +73,7 @@ class VoiceInputController {
           await startRecording();
         }
       },
-      // Remove onKeyUp handler for toggle mode
     );
-
-    // Quick fix: Since our HotkeyService interface currently only exposes onKeyDown,
-    // we might need to handle the "hold" logic differently or update the service.
-    // For now, let's assume we want "Push to Talk" style.
-    // However, existing HotkeyManager package supports keyDown and keyUp.
-    // Let's first implementation assume toggle or check if we need to update service.
-
-    // Re-reading implementation plan: "Called on hotkey down... Called on hotkey up".
-    // The current HotkeyService signature `register(HotKey hotKey, {VoidCallback? onKeyDown})`
-    // is missing onKeyUp. I should probably update the interface and implementation of HotkeyService first
-    // to support keyUp, OR implement a toggle.
-    // Given the request is likely "Push-to-Talk" or "Hold-to-Record", keyUp is essential.
-    // I will proceed with writing this controller assuming I will fix the service in a moment.
   }
 
   Future<void> startRecording() async {
@@ -112,8 +104,13 @@ class VoiceInputController {
       _isRecordingStreamSubscription = stream.listen(
         (data) {
           _audioBuffer.addAll(data);
-          // Debug sample: log every ~100th chunk or just log size periodically?
-          // Let's log if buffer is growing.
+          // Log data reception occasionally to verify mic input
+          // 32000 bytes ~ 1 sec
+          if (_audioBuffer.length % 32000 < data.length) {
+            debugPrint(
+              'Audio buffer growing. Total bytes: ${_audioBuffer.length}',
+            );
+          }
         },
         onError: (e) {
           debugPrint('Audio stream error: $e');
@@ -121,12 +118,18 @@ class VoiceInputController {
         },
       );
 
-      // Start periodic transcription (Every 1.5 seconds)
-      _transcriptionTimer = Timer.periodic(const Duration(milliseconds: 1500), (
+      // Start periodic transcription
+      // Interval increased to 2.0s to reduce load
+      _transcriptionTimer = Timer.periodic(const Duration(milliseconds: 2000), (
         _,
-      ) {
+      ) async {
+        // Make callback async to handle future
+        if (_isProcessing) {
+          debugPrint('Skipping transcription: previous task still running');
+          return;
+        }
         debugPrint('Timer tick. Buffer size: ${_audioBuffer.length}');
-        _processCurrentBuffer();
+        await _processCurrentBuffer();
       });
 
       debugPrint('Started recording stream');
@@ -138,6 +141,7 @@ class VoiceInputController {
 
   Future<void> stopRecordingAndTranscribe() async {
     if (!_isRecording) return;
+    debugPrint('Stopping recording...');
     _isRecording = false;
     _isRecordingController.add(false);
     _transcriptionTimer?.cancel();
@@ -147,6 +151,7 @@ class VoiceInputController {
 
     try {
       await _audioCaptureService.stop();
+      debugPrint('Audio capture stopped. Processing final buffer...');
       // Final transcription
       await _processCurrentBuffer();
 
@@ -157,9 +162,7 @@ class VoiceInputController {
       if (_currentTranscription.isNotEmpty) {
         await Clipboard.setData(ClipboardData(text: _currentTranscription));
         debugPrint('Copied to clipboard: $_currentTranscription');
-        // Clear overlay after a delay? Or keep it?
-        // Typically hide it after a few seconds or immediately.
-        // Let's keep it for 2 seconds to show confirmation.
+
         // ignore: unawaited_futures
         Future.delayed(const Duration(seconds: 2), () {
           if (!_isRecording) {
@@ -168,7 +171,6 @@ class VoiceInputController {
           }
         });
       } else {
-        // If no text, hide immediately or after short delay
         // ignore: unawaited_futures
         Future.delayed(const Duration(milliseconds: 500), () {
           if (!_isRecording) _windowService.hide();
@@ -180,17 +182,17 @@ class VoiceInputController {
   }
 
   Future<void> _processCurrentBuffer() async {
-    // Ensure we have at least 1 second of audio (16000 samples * 2 bytes = 32000 bytes)
-    // Processing very short audio segments can cause Whisper to crash or output nothing.
+    // Ensure we have at least 1 second of audio
     if (_audioBuffer.length < 32000) {
       debugPrint('Buffer too small for transcription: ${_audioBuffer.length}');
       return;
     }
 
+    _isProcessing = true;
     try {
       final tempDir = await getTemporaryDirectory();
       final tempPath = p.join(tempDir.path, 'temp_chunk.wav');
-      final file = File(tempPath);
+      final file = _fs.file(tempPath);
 
       // Create WAV file with header
       final header = WavHeader.createWavHeader(
@@ -203,20 +205,18 @@ class VoiceInputController {
       final bytes = <int>[...header, ..._audioBuffer];
       await file.writeAsBytes(bytes, flush: true);
 
-      // Transcribe
-      // We are sending the FULL buffer every time, so we don't need 'prompt' for context
-      // because the audio *contains* the context.
-      // However, as buffer grows, we might want to switch to chunking + prompt.
-      // For now, full buffer is safer.
+      debugPrint('Transcribing ${bytes.length} bytes...');
       final text = await _whisperService.transcribe(tempPath);
+      debugPrint('Transcription done: "$text"');
 
       if (text != _currentTranscription) {
         _currentTranscription = text;
         _textController.add(text);
-        debugPrint('Partial: $text');
       }
     } catch (e) {
       debugPrint('Transcription error: $e');
+    } finally {
+      _isProcessing = false;
     }
   }
 

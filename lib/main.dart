@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:system_tray/system_tray.dart';
+import 'package:whisper_flutter_new/whisper_flutter_new.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/services/audio_capture_service.dart';
 import 'core/services/hotkey_service.dart';
+import 'core/services/settings_service.dart';
 import 'core/services/system_tray_service.dart';
 import 'core/services/whisper_service.dart';
 import 'core/services/window_service.dart';
@@ -65,6 +67,7 @@ void main() async {
   final audioCaptureService = DefaultAudioCaptureService();
   final whisperService = DefaultWhisperService();
   final windowService = DefaultWindowService();
+  final settingsService = SettingsService();
 
   final controller = VoiceInputController(
     audioCaptureService: audioCaptureService,
@@ -77,24 +80,49 @@ void main() async {
   // Initialize System Tray
   await systemTrayService.init();
 
-  final menu = Menu();
-  await menu.buildFrom([
-    MenuItemLabel(label: 'Show', onClicked: (menuItem) => windowManager.show()),
-    MenuItemLabel(label: 'Hide', onClicked: (menuItem) => windowManager.hide()),
-    MenuItemLabel(
-      label: 'Exit',
-      onClicked: (menuItem) => windowManager.close(),
-    ),
-  ]);
+  Future<void> updateMenu(WhisperModel currentModel) async {
+    final menu = Menu();
+    await menu.buildFrom([
+      MenuItemLabel(
+        label: 'Show',
+        onClicked: (menuItem) => windowManager.show(),
+      ),
+      MenuItemLabel(
+        label: 'Hide',
+        onClicked: (menuItem) => windowManager.hide(),
+      ),
+      SubMenu(
+        label: 'Model',
+        children: WhisperModel.values.map((model) {
+          return MenuItemCheckbox(
+            label: model.name,
+            checked: model == currentModel,
+            onClicked: (menuItem) async {
+              await settingsService.setWhisperModel(model);
+              await whisperService.updateModel(model);
+              // Refresh menu to update checkmarks
+              await updateMenu(model);
+            },
+          );
+        }).toList(),
+      ),
+      MenuSeparator(),
+      MenuItemLabel(
+        label: 'Exit',
+        onClicked: (menuItem) => windowManager.close(),
+      ),
+    ]);
+    await systemTrayService.setContextMenu(menu);
+  }
 
-  await systemTrayService.setContextMenu(menu);
+  // Load saved model
+  final initialModel = await settingsService.getWhisperModel();
+  await updateMenu(initialModel);
 
   // Initialize Controller (registers hotkeys)
   await controller.init();
-  // We need to initialize whisper service too
-  await whisperService.init(
-    modelPath: 'base',
-  ); // Using 'base' model as default for now
+  // Initialize whisper service with saved model
+  await whisperService.init(model: initialModel);
 
   runApp(MyApp(controller: controller));
 }
