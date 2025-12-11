@@ -10,3 +10,6 @@ pre-commit:
     tests:
       glob: "*.dart"
       run: flutter test
+    security:
+      glob: "pubspec.yaml"
+      run: osv-scanner --lockfile pubspec.lock
